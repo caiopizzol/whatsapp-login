@@ -18,8 +18,8 @@ export default function App() {
   return (
     <WhatsAppLogin
       apiUrl="http://localhost:3000"
-      sessionId="login"
-      authToken=""
+      sessionId="your-session-id-here"
+      authToken="your-secret-token-here"
       onSuccess={({ phone }) => setVerified(phone)}
       onError={(err) => console.error(err)}
     />
