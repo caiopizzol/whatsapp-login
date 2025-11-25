@@ -21,3 +21,29 @@ export type {
   UseWhatsAppLoginReturn,
   LoginStatus,
 } from './hooks/useWhatsAppLogin'
+
+// Providers
+export { WhatsAppWebApiProvider } from './providers/whatsapp-web-api'
+export { EvolutionApiProvider } from './providers/evolution-api'
+export { WhatsAppCloudApiProvider } from './providers/whatsapp-cloud-api'
+
+// Provider types
+export type {
+  VerificationProvider,
+  SendCodeParams,
+  SendCodeResponse,
+  VerifyCodeParams,
+  VerifyCodeResponse,
+  BaseProviderConfig,
+  WhatsAppWebApiConfig,
+  EvolutionApiConfig,
+  WhatsAppCloudApiConfig,
+} from './providers/types'
+
+// Provider utilities
+export {
+  generateCode,
+  calculateExpiry,
+  formatMessage,
+  DEFAULT_MESSAGE_TEMPLATE,
+} from './providers/types'

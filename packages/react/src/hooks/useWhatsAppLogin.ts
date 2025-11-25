@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
+import type { VerificationProvider } from '../providers/types'
+import { WhatsAppWebApiProvider } from '../providers/whatsapp-web-api'
 
 export type LoginStatus =
   | 'idle'
@@ -9,12 +11,49 @@ export type LoginStatus =
   | 'error'
 
 export interface UseWhatsAppLoginOptions {
-  apiUrl: string
+  /**
+   * Custom verification provider.
+   * If provided, apiUrl/sessionId/authToken are ignored.
+   */
+  provider?: VerificationProvider
+
+  /**
+   * URL of your WhatsApp Web API instance.
+   * Required if no provider is specified.
+   */
+  apiUrl?: string
+
+  /**
+   * Session ID for WhatsApp Web API.
+   * @default 'login'
+   */
   sessionId?: string
+
+  /**
+   * Bearer token for authentication.
+   */
   authToken?: string
+
+  /**
+   * Length of the verification code.
+   * @default 6
+   */
   codeLength?: number
+
+  /**
+   * Code expiration time in seconds.
+   * @default 300
+   */
   codeExpiry?: number
+
+  /**
+   * Callback when verification succeeds.
+   */
   onSuccess?: (data: { phone: string }) => void
+
+  /**
+   * Callback when an error occurs.
+   */
   onError?: (error: Error) => void
 }
 
@@ -35,6 +74,7 @@ export function useWhatsAppLogin(
   options: UseWhatsAppLoginOptions
 ): UseWhatsAppLoginReturn {
   const {
+    provider: customProvider,
     apiUrl,
     sessionId = 'login',
     authToken,
@@ -44,23 +84,31 @@ export function useWhatsAppLogin(
     onError,
   } = options
 
+  // Create provider instance (memoized)
+  const provider = useMemo(() => {
+    if (customProvider) return customProvider
+
+    if (!apiUrl) {
+      throw new Error(
+        'Either provider or apiUrl must be specified for useWhatsAppLogin'
+      )
+    }
+
+    return new WhatsAppWebApiProvider({
+      apiUrl,
+      sessionId,
+      authToken,
+    })
+  }, [customProvider, apiUrl, sessionId, authToken])
+
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<LoginStatus>('idle')
   const [error, setError] = useState<Error | null>(null)
   const [expiresAt, setExpiresAt] = useState<Date | null>(null)
 
-  const pendingCodeRef = useRef<string | null>(null)
-
-  const getHeaders = useCallback(() => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`
-    }
-    return headers
-  }, [authToken])
+  // Store the expected code for client-side verification
+  const expectedCodeRef = useRef<string | null>(null)
 
   const sendCode = useCallback(
     async (phoneNumber?: string) => {
@@ -76,27 +124,14 @@ export function useWhatsAppLogin(
       setError(null)
 
       try {
-        const response = await fetch(
-          `${apiUrl}/sessions/${sessionId}/verify/send`,
-          {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              phone: targetPhone,
-              codeLength,
-              expiresIn: codeExpiry,
-            }),
-          }
-        )
+        const response = await provider.sendCode({
+          phone: targetPhone,
+          codeLength,
+          expiresIn: codeExpiry,
+        })
 
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to send verification code')
-        }
-
-        pendingCodeRef.current = data.code
-        setExpiresAt(new Date(data.expiresAt))
+        expectedCodeRef.current = response.code
+        setExpiresAt(new Date(response.expiresAt))
         setPhone(targetPhone)
         setStatus('code_sent')
       } catch (err) {
@@ -106,7 +141,7 @@ export function useWhatsAppLogin(
         onError?.(error)
       }
     },
-    [apiUrl, sessionId, phone, codeLength, codeExpiry, getHeaders, onError]
+    [provider, phone, codeLength, codeExpiry, onError]
   )
 
   const verifyCode = useCallback(
@@ -123,23 +158,11 @@ export function useWhatsAppLogin(
       setError(null)
 
       try {
-        const response = await fetch(
-          `${apiUrl}/sessions/${sessionId}/verify/check`,
-          {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              phone,
-              code: targetCode,
-            }),
-          }
-        )
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Invalid verification code')
-        }
+        await provider.verifyCode({
+          phone,
+          code: targetCode,
+          expectedCode: expectedCodeRef.current || '',
+        })
 
         setStatus('success')
         onSuccess?.({ phone })
@@ -150,7 +173,7 @@ export function useWhatsAppLogin(
         onError?.(error)
       }
     },
-    [apiUrl, sessionId, phone, code, getHeaders, onSuccess, onError]
+    [provider, phone, code, onSuccess, onError]
   )
 
   const reset = useCallback(() => {
@@ -159,7 +182,7 @@ export function useWhatsAppLogin(
     setStatus('idle')
     setError(null)
     setExpiresAt(null)
-    pendingCodeRef.current = null
+    expectedCodeRef.current = null
   }, [])
 
   return {
