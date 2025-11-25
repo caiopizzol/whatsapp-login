@@ -1,0 +1,21 @@
+# Source and config
+src/
+!src/styles.css
+tsconfig.json
+tsup.config.ts
+
+# Development
+.env*
+*.log
+node_modules/
+
+# Release config
+.releaserc.cjs
+
+# CI/CD
+.github/
+
+# Tests
+__tests__/
+*.test.*
+*.spec.*

@@ -1,0 +1,52 @@
+name: Sync Patches [auto]
+
+on:
+  push:
+    branches: [stable, '*.x']
+    paths:
+      - 'packages/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-to-main:
+    runs-on: ubuntu-latest
+    # Skip release/promotion commits
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, 'chore(release)') &&
+      !contains(github.event.head_commit.message, 'chore: promote')
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Cherry-pick to main
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          PATCH_BRANCH="sync-patch-${{ github.sha }}"
+          git checkout -b "$PATCH_BRANCH" origin/main
+
+          if git cherry-pick "${{ github.sha }}"; then
+            git push origin "$PATCH_BRANCH"
+
+            gh pr create \
+              --base main \
+              --head "$PATCH_BRANCH" \
+              --title "🔄 Sync: ${{ github.event.head_commit.message }}" \
+              --body "Auto-sync patch from \`${{ github.ref_name }}\`
+
+              Commit: ${{ github.sha }}
+
+              ---
+              _Automated patch sync. Review and merge if tests pass._"
+          fi
