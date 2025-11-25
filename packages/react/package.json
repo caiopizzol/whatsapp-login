@@ -56,5 +56,8 @@
     "type": "git",
     "url": "https://github.com/caiopizzol/whatsapp-login",
     "directory": "packages/react"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
