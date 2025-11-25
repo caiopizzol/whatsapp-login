@@ -3,6 +3,7 @@ import { useWhatsAppLogin } from '../hooks/useWhatsAppLogin'
 import { PhoneInput } from './PhoneInput'
 import { CodeInput } from './CodeInput'
 import { WhatsAppLogo } from './WhatsAppLogo'
+import type { VerificationProvider } from '../providers/types'
 
 export interface WhatsAppLoginAppearance {
   theme?: 'light' | 'dark' | 'auto'
@@ -17,8 +18,27 @@ export interface WhatsAppLoginAppearance {
 }
 
 export interface WhatsAppLoginProps {
-  apiUrl: string
+  /**
+   * Custom verification provider.
+   * If provided, apiUrl/sessionId/authToken are ignored.
+   */
+  provider?: VerificationProvider
+
+  /**
+   * URL of your WhatsApp Web API instance.
+   * Required if no provider is specified.
+   */
+  apiUrl?: string
+
+  /**
+   * Session ID for WhatsApp Web API.
+   * @default 'login'
+   */
   sessionId?: string
+
+  /**
+   * Bearer token for authentication.
+   */
   authToken?: string
   codeLength?: number
   codeExpiry?: number
@@ -30,6 +50,7 @@ export interface WhatsAppLoginProps {
 }
 
 export function WhatsAppLogin({
+  provider,
   apiUrl,
   sessionId = 'login',
   authToken,
@@ -53,6 +74,7 @@ export function WhatsAppLogin({
     verifyCode,
     reset,
   } = useWhatsAppLogin({
+    provider,
     apiUrl,
     sessionId,
     authToken,
