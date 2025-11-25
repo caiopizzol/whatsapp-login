@@ -1,0 +1,31 @@
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  font-family: system-ui, sans-serif;
+}
+
+.success {
+  text-align: center;
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.success h1 {
+  color: #25d366;
+  margin: 0 0 0.5rem;
+}
+
+.success button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
